@@ -1,13 +1,14 @@
 # Makefile for FTDI MPSSE example programs
 # using libftd2xx
+# Assumes libftd2xx installed in /usr/local/
 
-LIBFTD2XX_DIR = ~/foreign/libftd2xx/release
+TOP = /usr/local/ftd2xx
 
-CFLAGS = -I $(LIBFTD2XX_DIR)
+CFLAGS = -I $(TOP)/include -L$(TOP)/lib
 # TODO: get dynamic lib working
-FTDLIB = $(LIBFTD2XX_DIR)/build/libftd2xx.a
+FTDLIB = -lftd2xx
 
 all: jtag
 
 %: %.c
-	$(CC) $(CFLAGS) -o $@ $< $(FTDLIB) -lpthread
+	$(CC) $(CFLAGS) -o $@ $< $(FTDLIB) -lpthread -Wl,-rpath $(TOP)/lib

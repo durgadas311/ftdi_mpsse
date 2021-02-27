@@ -188,8 +188,12 @@ int main(int argc, char *argv[])
     unsigned char  *readBuffer = NULL;
     int             queueChecks = 0;
 
+#if 0
     UNUSED_PARAMETER(argc);
     UNUSED_PARAMETER(argv);
+#else
+    if (argc > 1) portNum = atoi(argv[1]);
+#endif
     
     // Make printfs immediate (no buffer)
     setvbuf(stdout, NULL, _IONBF, 0);

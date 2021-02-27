@@ -1,0 +1,11 @@
+Remeber to install the libftd2xx code:
+
+From ~/foreign/libftd2xx/release/build:
+
+	mkdir -p /usr/local/ftd2xx/{lib,include}
+	cp libftd2xx.a libftd2xx.so.1.4.22 /usr/local/ftd2xx/lib/
+	chmod 0755 /usr/local/ftd2xx/lib/libftd2xx.so.1.4.22
+	ln -sf /usr/local/ftd2xx/lib/libftd2xx.so.1.4.22 /usr/local/ftd2xx/lib/libftd2xx.so
+	cp ../*.h /usr/local/ftd2xx/include
+
+NOTE! Access to FT232H (without device driver) may require root priviledges!
