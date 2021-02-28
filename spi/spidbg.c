@@ -15,6 +15,7 @@
 
 int main(int argc, char **argv) {
 	int len;
+	int port = 0;
 	unsigned char *bufo;
 	unsigned char *bufi;
 	int x;
@@ -24,10 +25,13 @@ int main(int argc, char **argv) {
 	extern int optind;
 
 	len = -1;
-	while ((c = getopt(argc, argv, "l:")) != EOF) {
+	while ((c = getopt(argc, argv, "l:p:")) != EOF) {
 		switch(c) {
 		case 'l':
 			len = strtol(optarg, NULL, 0);
+			break;
+		case 'p':
+			port = strtol(optarg, NULL, 0);
 			break;
 		default:
 			fprintf(stderr, "Unknown option '%c'\n", c);
@@ -35,7 +39,7 @@ int main(int argc, char **argv) {
 		}
 	}
 	if (argc - optind < 1) {
-		fprintf(stderr, "Usage: %s [-l len] <byte>[...]\n", argv[0]);
+		fprintf(stderr, "Usage: %s [-p port][-l len] <byte>[...]\n", argv[0]);
 		fprintf(stderr, "Where 'len' must be at least <byte>[...] length\n");
 		exit(1);
 	}
@@ -61,7 +65,7 @@ int main(int argc, char **argv) {
 	}
 	// TODO: perform operation...
 	FT_HANDLE ft;
-	ft = spi_open(0); // TODO: allow choice of port
+	ft = spi_open(port);
 	if (ft == NULL) {
 		fprintf(stderr, "Unable to open device, error = %d\n", ftStatus);
 		exit(1);
