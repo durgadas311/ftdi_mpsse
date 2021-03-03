@@ -13,11 +13,14 @@
 #include "ftd2xx.h"
 #include "spilib.h"
 
+extern unsigned short crc16(unsigned char *buf, int len);
+
 int main(int argc, char **argv) {
 	int tot;
 	int cmd;
 	int len = 0;
 	int port = 0;
+	int crc = 0;
 	int verbose = 0;
 	unsigned char *bufo;
 	unsigned char *bufi;
@@ -28,8 +31,11 @@ int main(int argc, char **argv) {
 	extern char *optarg;
 	extern int optind;
 
-	while ((c = getopt(argc, argv, "l:p:v")) != EOF) {
+	while ((c = getopt(argc, argv, "cl:p:v")) != EOF) {
 		switch(c) {
+		case 'c':
+			crc = 1;
+			break;
 		case 'l':
 			len = strtol(optarg, NULL, 0);
 			break;
@@ -45,8 +51,13 @@ int main(int argc, char **argv) {
 		}
 	}
 	if (argc - optind < 1) {
-		fprintf(stderr, "Usage: %s [-v][-p port][-l len] <byte>[...]\n", argv[0]);
-		fprintf(stderr, "Where 'len' is added to <byte>[...] length (read len)\n");
+		fprintf(stderr, "Usage: %s [-v|-c][-p port][-l len] <byte>[...]\n", argv[0]);
+		fprintf(stderr, "Where:\n"
+				"    -l len  Read len additional bytes\n"
+				"    -c      Print only CRC16 of read data (req -l)\n"
+				"    -v      Print full write and read buffers (ovr -c)\n"
+				"    -p port Use port instead of 0\n"
+		);
 		exit(1);
 	}
 	cmd = argc - optind;
@@ -78,7 +89,11 @@ int main(int argc, char **argv) {
 		printf("Read (%06x %d):\n", driverVersion, ftStatus);
 		dump_buf(bufi, tot);
 	} else if (len > 0) {
-		dump_buf(bufi + cmd, len);
+		if (crc) {
+			printf("CRC: %04x\n", crc16(bufi + cmd, len));
+		} else {
+			dump_buf(bufi + cmd, len);
+		}
 	}
 	spi_close(ft);
 	return 0;

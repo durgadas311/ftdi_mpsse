@@ -13,7 +13,7 @@ all: spidbg
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-SPIDBG = spidbg.o spilib.o
+SPIDBG = spidbg.o spilib.o crc16.o
 
 spidbg: $(SPIDBG)
 	$(CC) $(CFLAGS) -o $@ $^ $(FTDLIB) -lpthread -Wl,-rpath $(TOP)/lib
