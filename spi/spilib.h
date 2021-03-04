@@ -3,7 +3,7 @@
 
 #include "ftd2xx.h"
 
-void dump_buf(unsigned char *buf, int len);
+void dump_buf(unsigned char *buf, int off, int len);
 
 // For now, this serves as 'errno'
 extern FT_STATUS ftStatus;

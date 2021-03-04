@@ -23,12 +23,12 @@
 #undef FAST_CS	// try to clear /CS sooner.
 #undef ONLY_CS	// try to clear /CS without full reset.
 
-void dump_buf(unsigned char *buf, int len) {
+void dump_buf(unsigned char *buf, int off, int len) {
 	int j, k;
 
 	for (j = 0; j < len; j += 16) {
 		// TODO: allow custom line prefix
-		printf("%04x:", j);
+		printf("%04x:", j + off);
 		for (k = 0; k < 16 && k + j < len; ++k) {
 			printf(" %02x", buf[j + k]);
 		}

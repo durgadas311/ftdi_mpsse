@@ -85,14 +85,14 @@ int main(int argc, char **argv) {
 		fprintf(stderr, "Failure during transfer, error = %d\n", ftStatus);
 	} else if (verbose) {
 		printf("Write:\n");
-		dump_buf(bufo, tot);
+		dump_buf(bufo, 0, tot);
 		printf("Read (%06x %d):\n", driverVersion, ftStatus);
-		dump_buf(bufi, tot);
+		dump_buf(bufi, 0, tot);
 	} else if (len > 0) {
 		if (crc) {
 			printf("CRC: %04x\n", crc16(bufi + cmd, len));
 		} else {
-			dump_buf(bufi + cmd, len);
+			dump_buf(bufi + cmd, 0, len);
 		}
 	}
 	spi_close(ft);
