@@ -9,9 +9,13 @@
 #include <ctype.h>
 #include "ftd2xx.h"
 
-#define IODIR	0b1011	// CS=out, TDO=in, TDI=out, TCK=out
-#define IOINIT	0b1000	// CS=high (off), SCLK=low
-#define IO_CS	0b1000	// CS bit location/mask
+#define IODIR	0b11111011	// CS=out, TDO=in, TDI=out, TCK=out
+#define IOINIT	0b11111000	// CS=high (off), SCLK=low
+#define IO_CS	0b00001000	// CS bit location/mask
+#define IO_GP0	0b00010000	// GPIOL0 bit location/mask
+#define IO_GP1	0b00100000	// GPIOL1 bit location/mask
+#define IO_GP2	0b01000000	// GPIOL2 bit location/mask
+#define IO_GP3	0b10000000	// GPIOL3 bit location/mask
 // bit   wire           SPI func
 //  0    ORN "TCK"      SCLK
 //  1    YEL "TDI"      MOSI
@@ -136,6 +140,32 @@ int spi_speed(int hz) {
 	return get_speed();
 }
 
+static int chipsel = IO_CS;
+
+// -1 = for TMS (default), 0-3 for GPIOL0-3.
+int set_cs(char cs) {
+	switch(toupper(cs)) {
+	case '0':
+		chipsel = IO_GP0;
+		break;
+	case '1':
+		chipsel = IO_GP1;
+		break;
+	case '2':
+		chipsel = IO_GP2;
+		break;
+	case '3':
+		chipsel = IO_GP3;
+		break;
+	case 'C':
+		chipsel = IO_CS;
+		break;
+	default:
+		return -1;
+	}
+	return cs;
+}
+
 // For now, this serves as 'errno'
 FT_STATUS ftStatus = FT_OK;
 DWORD driverVersion = 0;
@@ -191,9 +221,9 @@ int spi_cs(FT_HANDLE ftHandle, int on) {
 		MP_SETIO, IOINIT, IODIR
 	};
 	if (on) {
-		setio[1] &= ~IO_CS; // clear bit = on, active low signal
+		setio[1] &= ~chipsel; // clear bit = on, active low signal
 	} else {
-		setio[1] |= IO_CS; // set bit = off, active low signal
+		setio[1] |= chipsel; // set bit = off, active low signal
 	}
 	int n = spi_write(ftHandle, setio, sizeof(setio));
 	if (n < 0 || n != sizeof(setio)) {

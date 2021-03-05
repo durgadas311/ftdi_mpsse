@@ -73,6 +73,7 @@ int main(int argc, char **argv) {
 	int port = 0;
 	int speed = 0;
 	int verbose = 0;
+	int cs = 'C';
 	char *file = NULL;
 	int fd;
 	unsigned char *bufo;
@@ -85,10 +86,17 @@ int main(int argc, char **argv) {
 	extern char *optarg;
 	extern int optind;
 
-	while ((c = getopt(argc, argv, "f:p:s:vw")) != EOF) {
+	while ((c = getopt(argc, argv, "f:g:p:s:vw")) != EOF) {
 		switch(c) {
 		case 'f':
 			file = optarg;
+			break;
+		case 'g':
+			cs = set_cs(optarg[0]);
+			if (cs < 0) {
+				fprintf(stderr, "Invalid GPIO /CS\n");
+				exit(1);
+			}
 			break;
 		case 'p':
 			port = strtol(optarg, NULL, 0);
@@ -121,6 +129,7 @@ int main(int argc, char **argv) {
 				"    -p port  Use port instead of 0\n"
 				"    -f file  Use file for data (no <byte>[...])\n"
 				"    -s hz   Use hz clock speed (def 1.2M)\n"
+				"    -g cs   Use gpio for chip-select (0..3, def C)\n"
 		);
 		exit(1);
 	}
@@ -131,6 +140,7 @@ int main(int argc, char **argv) {
 	}
 	if (verbose) {
 		printf("Using speed %sHz\n", print_speed(speed));
+		printf("Using chip-select '%c'\n", cs);
 	}
 	x = optind;
 	addr = strtol(argv[x++], NULL, 0);

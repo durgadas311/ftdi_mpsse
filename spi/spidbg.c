@@ -21,6 +21,7 @@ int main(int argc, char **argv) {
 	int len = 0;
 	int port = 0;
 	int speed = 0;
+	int cs = 'C';
 	int crc = 0;
 	int verbose = 0;
 	unsigned char *bufo;
@@ -32,10 +33,17 @@ int main(int argc, char **argv) {
 	extern char *optarg;
 	extern int optind;
 
-	while ((c = getopt(argc, argv, "cl:p:s:v")) != EOF) {
+	while ((c = getopt(argc, argv, "cg:l:p:s:v")) != EOF) {
 		switch(c) {
 		case 'c':
 			crc = 1;
+			break;
+		case 'g':
+			cs = set_cs(optarg[0]);
+			if (cs < 0) {
+				fprintf(stderr, "Invalid GPIO /CS\n");
+				exit(1);
+			}
 			break;
 		case 'l':
 			len = strtol(optarg, NULL, 0);
@@ -62,6 +70,7 @@ int main(int argc, char **argv) {
 				"    -v      Print full write and read buffers (ovr -c)\n"
 				"    -p port Use port instead of 0\n"
 				"    -s hz   Use hz clock speed (def 1.2M)\n"
+				"    -g cs   Use gpio for chip-select (0..3, def C)\n"
 		);
 		exit(1);
 	}
@@ -72,6 +81,7 @@ int main(int argc, char **argv) {
 	}
 	if (verbose) {
 		printf("Using speed %sHz\n", print_speed(speed));
+		printf("Using chip-select '%c'\n", cs);
 	}
 	cmd = argc - optind;
 	tot = cmd + len;
