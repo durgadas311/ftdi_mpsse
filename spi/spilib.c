@@ -21,7 +21,7 @@
 //  6    WHT "GPIOL2"   -
 //  7    BLU "GPIOL3"   -
 
-#define DEBUG
+#undef DEBUG
 
 void dump_buf(unsigned char *buf, int off, int len) {
 	int j, k;
@@ -73,6 +73,11 @@ static void spi_flush(FT_HANDLE ftHandle) {
 	DWORD bytesReceived = 0;
 	DWORD bytesRead = 0;
 	unsigned char *buf;
+	unsigned char flsh[] = { 0x87 };
+	int n = spi_write(ftHandle, flsh, sizeof(flsh));
+	if (n < 0 || n != sizeof(flsh)) {
+		return;
+	}
 	ftStatus = FT_GetQueueStatus(ftHandle, &bytesReceived);
 	if (ftStatus != FT_OK || bytesReceived == 0) {
 		return;
@@ -85,7 +90,7 @@ static void spi_flush(FT_HANDLE ftHandle) {
 	ftStatus = FT_Read(ftHandle, buf, bytesReceived, &bytesRead);
 	if (ftStatus == FT_OK) {
 		// if (bytesReceived != bytesRead) ...
-		dump_buf(buf, 0xf000, bytesRead);
+		dump_buf(buf, 0xf800, bytesRead);
 	}
 	free(buf);
 }
@@ -143,6 +148,7 @@ static int spi_prep(FT_HANDLE ftHandle, DWORD len) {
 	unsigned char xfer[3] = {
 		0x31, 0x00, 0x00  // Write + read; length bytes set below.
 	};
+	len -= 1;	// field is length-1...
 	xfer[1] = (unsigned char)(len & 0x00FF);
 	xfer[2] = (unsigned char)((len & 0xFF00) >> 8);
 	int n = spi_write(ftHandle, xfer, sizeof(xfer));
@@ -241,6 +247,7 @@ int spi_begin(FT_HANDLE ftHandle, int len) {
 	if (n < 0) {
 		return -1;
 	}
+	//spi_flush(ftHandle);
 	n = spi_prep(ftHandle, len); // setup write
 	if (n < 0) {
 		return -1;
@@ -253,6 +260,7 @@ int spi_end(FT_HANDLE ftHandle) {
 	if (n < 0) {
 		return -1;
 	}
+	//spi_flush(ftHandle);
 	return 0;
 }
 
