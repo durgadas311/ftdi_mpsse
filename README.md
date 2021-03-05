@@ -14,3 +14,8 @@ http://www.ftdichip.com/Support/Documents/DataSheets/Cables/DS_C232HM_MPSSE_CABL
 
 Note, Application Note 108 (AN-108), referenced in the datasheet, has a wealth
 of information on the MPSSE commands to setup the interface to the target device.
+
+Interfacing to SPI devices typically requires more than simple connection,
+as (at least) pull-up resistors are often required on certain pins.
+It may be beneficial to build a breadboard interface, such as
+![Breadboard Example](breadboard-1.jpg)

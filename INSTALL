@@ -1,6 +1,6 @@
-Remeber to install the libftd2xx code:
+Remeber to install the libftd2xx code (see also ReadMe.txt):
 
-From ~/foreign/libftd2xx/release/build:
+(Example) From ~/foreign/libftd2xx/release/build:
 
 	mkdir -p /usr/local/ftd2xx/{lib,include}
 	cp libftd2xx.a libftd2xx.so.1.4.22 /usr/local/ftd2xx/lib/
@@ -9,3 +9,5 @@ From ~/foreign/libftd2xx/release/build:
 	cp ../*.h /usr/local/ftd2xx/include
 
 NOTE! Access to FT232H (without device driver) may require root priviledges!
+
+Latest Driver available here: https://ftdichip.com/drivers/d2xx-drivers/
