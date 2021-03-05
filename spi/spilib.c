@@ -21,6 +21,13 @@
 //  6    WHT "GPIOL2"   -
 //  7    BLU "GPIOL3"   -
 
+// C232HM MPSSE commands
+#define	MP_CLKBYTES	0x31	// send/recv bytes, MSB 1st, -ve
+#define MP_FLUSH	0x87	// flush bytes to recv queue
+#define MP_SETIO	0x80	// set I/O pins, ADBUS (low byte)
+#define MP_NOLOOP	0x85	// loopback off
+#define MP_CLKDIV	0x86	// set clock divisor
+
 #undef DEBUG
 
 void dump_buf(unsigned char *buf, int off, int len) {
@@ -73,7 +80,7 @@ static void spi_flush(FT_HANDLE ftHandle) {
 	DWORD bytesReceived = 0;
 	DWORD bytesRead = 0;
 	unsigned char *buf;
-	unsigned char flsh[] = { 0x87 };
+	unsigned char flsh[] = { MP_FLUSH };
 	int n = spi_write(ftHandle, flsh, sizeof(flsh));
 	if (n < 0 || n != sizeof(flsh)) {
 		return;
@@ -97,16 +104,16 @@ static void spi_flush(FT_HANDLE ftHandle) {
 
 // Set /CS on (low) or off (high).
 int spi_cs(FT_HANDLE ftHandle, int on) {
-	unsigned char setup[] = {
-		0x80, IOINIT, IODIR
+	unsigned char setio[] = {
+		MP_SETIO, IOINIT, IODIR
 	};
 	if (on) {
-		setup[1] &= ~0b1000; // clear bit = on, active low signal
+		setio[1] &= ~IO_CS; // clear bit = on, active low signal
 	} else {
-		setup[1] |= 0b1000; // set bit = off, active low signal
+		setio[1] |= IO_CS; // set bit = off, active low signal
 	}
-	int n = spi_write(ftHandle, setup, sizeof(setup));
-	if (n < 0 || n != sizeof(setup)) {
+	int n = spi_write(ftHandle, setio, sizeof(setio));
+	if (n < 0 || n != sizeof(setio)) {
 		return -1;
 	}
 	return 0;
@@ -114,14 +121,14 @@ int spi_cs(FT_HANDLE ftHandle, int on) {
 
 int spi_setup(FT_HANDLE ftHandle) {
 	int n;
-	unsigned char setup[3] = {
-		0x80, IOINIT, IODIR
+	unsigned char setup[] = {
+		MP_SETIO, IOINIT, IODIR
 	};
-	unsigned char loopback[1] = {
-		0x85	// loopback off
+	unsigned char loopback[] = {
+		MP_NOLOOP	// loopback off
 	};
-	unsigned char clock[3] = {
-		0x86, 0x04, 0x00  // TCK divisor: CLK = 6 MHz / (1 + 0004) == 1.2 MHz
+	unsigned char clock[] = {
+		MP_CLKDIV, 0x04, 0x00  // TCK divisor: CLK = 6 MHz / (1 + 0004) == 1.2 MHz
 	};
 	ftStatus = FT_SetBitMode(ftHandle, IODIR, FT_BITMODE_MPSSE);
 	if (ftStatus != FT_OK) {
@@ -145,8 +152,8 @@ int spi_setup(FT_HANDLE ftHandle) {
 // Send SPI write prefix - prepare to send data to SPI device
 // (not commands to C232HM).
 static int spi_prep(FT_HANDLE ftHandle, DWORD len) {
-	unsigned char xfer[3] = {
-		0x31, 0x00, 0x00  // Write + read; length bytes set below.
+	unsigned char xfer[] = {
+		MP_CLKBYTES, 0x00, 0x00  // Write + read; length bytes set below.
 	};
 	len -= 1;	// field is length-1...
 	xfer[1] = (unsigned char)(len & 0x00FF);
