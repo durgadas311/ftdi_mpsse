@@ -71,6 +71,8 @@ int main(int argc, char **argv) {
 	int len = 0;
 	int tot = 0;
 	int port = 0;
+	int speed = 0;
+	int verbose = 0;
 	char *file = NULL;
 	int fd;
 	unsigned char *bufo;
@@ -83,13 +85,19 @@ int main(int argc, char **argv) {
 	extern char *optarg;
 	extern int optind;
 
-	while ((c = getopt(argc, argv, "f:p:w")) != EOF) {
+	while ((c = getopt(argc, argv, "f:p:s:vw")) != EOF) {
 		switch(c) {
 		case 'f':
 			file = optarg;
 			break;
 		case 'p':
 			port = strtol(optarg, NULL, 0);
+			break;
+		case 's':
+			speed = parse_speed(optarg);
+			break;
+		case 'v':
+			verbose = 1;
 			break;
 		case 'w':
 			wr = 1;
@@ -112,8 +120,17 @@ int main(int argc, char **argv) {
 		fprintf(stderr, "Options:\n"
 				"    -p port  Use port instead of 0\n"
 				"    -f file  Use file for data (no <byte>[...])\n"
+				"    -s hz   Use hz clock speed (def 1.2M)\n"
 		);
 		exit(1);
+	}
+	if (speed > 0) {
+		speed = spi_speed(speed);
+	} else {
+		speed = spi_speed(0);
+	}
+	if (verbose) {
+		printf("Using speed %sHz\n", print_speed(speed));
 	}
 	x = optind;
 	addr = strtol(argv[x++], NULL, 0);

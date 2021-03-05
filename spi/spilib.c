@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+#include <ctype.h>
 #include "ftd2xx.h"
 
 #define IODIR	0b1011	// CS=out, TDO=in, TDI=out, TCK=out
@@ -27,8 +28,22 @@
 #define MP_SETIO	0x80	// set I/O pins, ADBUS (low byte)
 #define MP_NOLOOP	0x85	// loopback off
 #define MP_CLKDIV	0x86	// set clock divisor
+#define MP_DIV5DI	0x8a	// disable clock divide-by-5 prescale (60MHz)
+#define MP_DIV5EN	0x8b	// enable clock divide-by-5 prescale (12MHz)
 
 #undef DEBUG
+
+#define CLK_RAW		60000000	// internal clock is 60MHz
+#define CLK_MAX		(CLK_RAW / 2)	// 60MHz / 2 is maximum
+#define CLK_DIV5	(CLK_RAW / 5)	// default divide-by-5 clock
+#define CLK_DMAX	(CLK_DIV5 / 2)	// max for using default 12MHz
+// Clock defaults: 12MHz divide by 5 = 1.2MHz
+static unsigned char div5[] = {
+	MP_DIV5EN
+};
+static unsigned char setclk[] = {
+	MP_CLKDIV, 0x04, 0x00  // TCK divisor: CLK = 6 MHz / (1 + 0004) == 1.2 MHz
+};
 
 void dump_buf(unsigned char *buf, int off, int len) {
 	int j, k;
@@ -51,6 +66,74 @@ void dump_buf(unsigned char *buf, int off, int len) {
 		}
 		printf("\n");
 	}
+}
+
+int parse_speed(char *arg) {
+	char *end;
+	double clk = strtod(arg, &end);
+	if (toupper(*end) == 'M') {
+		// TODO: *(end+1) == 0
+		clk *= 1e6;
+	} else if (toupper(*end) == 'K') {
+		// TODO: *(end+1) == 0
+		clk *= 1e3;
+	} else if (*end != 0) {
+		return -1;
+	}
+	if (clk <= 0) return 0;
+	if (clk > CLK_MAX) clk = CLK_MAX;
+	return (int)clk;
+}
+
+char *print_speed(int clk) {
+	static char buf[16];
+	char m = '\0';
+	double c = clk;
+	if (c >= 1e6) {
+		c /= 1e6;
+		m = 'M';
+	} else if (c >= 1e3) {
+		c /= 1e3;
+		m = 'K';
+	}
+	sprintf(buf, "%g%c", c, m);
+	return buf;
+}
+
+static int get_speed() {
+	int clk = CLK_DIV5;
+	if (div5[0] == MP_DIV5DI) {
+		clk = CLK_RAW;
+	}
+	int div = setclk[1];
+	div |= (setclk[2] << 8);
+	return (clk / ((1 + div) * 2));
+}
+
+// Must be called before open.
+// Setup clock speed 'hz'.
+// Returns actual clock speed setup.
+int spi_speed(int hz) {
+	if (hz <= 0) {
+		return get_speed();
+	}
+	if (hz > CLK_MAX) {
+		hz = CLK_MAX;
+	}
+	int clk;
+	if (hz > CLK_DMAX) {
+		div5[0] = MP_DIV5DI;
+		clk = CLK_RAW;
+	} else {
+		div5[0] = MP_DIV5EN;
+		clk = CLK_DIV5;
+	}
+	int div = (clk / 2 / hz) - 1;
+	if (div < 0) div = 0;
+	if (div > 0xffff) div = 0xffff;
+	setclk[1] = div & 0xff;
+	setclk[2] = (div >> 8) & 0xff;
+	return get_speed();
 }
 
 // For now, this serves as 'errno'
@@ -127,9 +210,6 @@ int spi_setup(FT_HANDLE ftHandle) {
 	unsigned char loopback[] = {
 		MP_NOLOOP	// loopback off
 	};
-	unsigned char clock[] = {
-		MP_CLKDIV, 0x04, 0x00  // TCK divisor: CLK = 6 MHz / (1 + 0004) == 1.2 MHz
-	};
 	ftStatus = FT_SetBitMode(ftHandle, IODIR, FT_BITMODE_MPSSE);
 	if (ftStatus != FT_OK) {
 		return -1;
@@ -142,8 +222,12 @@ int spi_setup(FT_HANDLE ftHandle) {
 	if (n < 0 || n != sizeof(loopback)) {
 		return -1;
 	}
-	n = spi_write(ftHandle, clock, sizeof(clock));
-	if (n < 0 || n != sizeof(clock)) {
+	n = spi_write(ftHandle, div5, sizeof(div5));
+	if (n < 0 || n != sizeof(div5)) {
+		return -1;
+	}
+	n = spi_write(ftHandle, setclk, sizeof(setclk));
+	if (n < 0 || n != sizeof(setclk)) {
 		return -1;
 	}
 	return 0;

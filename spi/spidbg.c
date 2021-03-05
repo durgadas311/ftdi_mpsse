@@ -20,6 +20,7 @@ int main(int argc, char **argv) {
 	int cmd;
 	int len = 0;
 	int port = 0;
+	int speed = 0;
 	int crc = 0;
 	int verbose = 0;
 	unsigned char *bufo;
@@ -31,7 +32,7 @@ int main(int argc, char **argv) {
 	extern char *optarg;
 	extern int optind;
 
-	while ((c = getopt(argc, argv, "cl:p:v")) != EOF) {
+	while ((c = getopt(argc, argv, "cl:p:s:v")) != EOF) {
 		switch(c) {
 		case 'c':
 			crc = 1;
@@ -42,6 +43,9 @@ int main(int argc, char **argv) {
 		case 'p':
 			port = strtol(optarg, NULL, 0);
 			break;
+		case 's':
+			speed = parse_speed(optarg);
+			break;
 		case 'v':
 			verbose = 1;
 			break;
@@ -51,14 +55,23 @@ int main(int argc, char **argv) {
 		}
 	}
 	if (argc - optind < 1) {
-		fprintf(stderr, "Usage: %s [-v|-c][-p port][-l len] <byte>[...]\n", argv[0]);
-		fprintf(stderr, "Where:\n"
+		fprintf(stderr, "Usage: %s [options] <byte>[...]\n", argv[0]);
+		fprintf(stderr, "Options:\n"
 				"    -l len  Read len additional bytes\n"
 				"    -c      Print only CRC16 of read data (req -l)\n"
 				"    -v      Print full write and read buffers (ovr -c)\n"
 				"    -p port Use port instead of 0\n"
+				"    -s hz   Use hz clock speed (def 1.2M)\n"
 		);
 		exit(1);
+	}
+	if (speed > 0) {
+		speed = spi_speed(speed);
+	} else {
+		speed = spi_speed(0);
+	}
+	if (verbose) {
+		printf("Using speed %sHz\n", print_speed(speed));
 	}
 	cmd = argc - optind;
 	tot = cmd + len;
