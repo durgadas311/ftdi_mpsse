@@ -13,6 +13,9 @@ all: spidbg nvram
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+toggle: toggle.c
+	$(CC) $(CFLAGS) -o $@ $^ $(FTDLIB) -lpthread -Wl,-rpath $(TOP)/lib
+
 NVRAM = nvram.o spilib.o
 SPIDBG = spidbg.o spilib.o crc16.o
 

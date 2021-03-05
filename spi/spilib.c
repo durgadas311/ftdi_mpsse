@@ -9,7 +9,8 @@
 #include "ftd2xx.h"
 
 #define IODIR	0b1011	// CS=out, TDO=in, TDI=out, TCK=out
-#define IOINIT	0b0000	// CS=low (on), SCLK=low
+#define IOINIT	0b1000	// CS=high (off), SCLK=low
+#define IO_CS	0b1000	// CS bit location/mask
 // bit   wire           SPI func
 //  0    ORN "TCK"      SCLK
 //  1    YEL "TDI"      MOSI
@@ -20,8 +21,7 @@
 //  6    WHT "GPIOL2"   -
 //  7    BLU "GPIOL3"   -
 
-#undef FAST_CS	// try to clear /CS sooner.
-#undef ONLY_CS	// try to clear /CS without full reset.
+#define DEBUG
 
 void dump_buf(unsigned char *buf, int off, int len) {
 	int j, k;
@@ -69,23 +69,59 @@ int spi_write(FT_HANDLE ftHandle, unsigned char *buf, const int len) {
 	return (int)bytesWritten;
 }
 
-int spi_setup(FT_HANDLE ftHandle, DWORD len) {
+static void spi_flush(FT_HANDLE ftHandle) {
+	DWORD bytesReceived = 0;
+	DWORD bytesRead = 0;
+	unsigned char *buf;
+	ftStatus = FT_GetQueueStatus(ftHandle, &bytesReceived);
+	if (ftStatus != FT_OK || bytesReceived == 0) {
+		return;
+	}
+	buf = malloc(bytesReceived);
+	if (buf == NULL) {
+		perror("malloc");
+		return;
+	}
+	ftStatus = FT_Read(ftHandle, buf, bytesReceived, &bytesRead);
+	if (ftStatus == FT_OK) {
+		// if (bytesReceived != bytesRead) ...
+		dump_buf(buf, 0xf000, bytesRead);
+	}
+	free(buf);
+}
+
+// Set /CS on (low) or off (high).
+int spi_cs(FT_HANDLE ftHandle, int on) {
+	unsigned char setup[] = {
+		0x80, IOINIT, IODIR
+	};
+	if (on) {
+		setup[1] &= ~0b1000; // clear bit = on, active low signal
+	} else {
+		setup[1] |= 0b1000; // set bit = off, active low signal
+	}
+	int n = spi_write(ftHandle, setup, sizeof(setup));
+	if (n < 0 || n != sizeof(setup)) {
+		return -1;
+	}
+	return 0;
+}
+
+int spi_setup(FT_HANDLE ftHandle) {
 	int n;
-	// assert(len < 0x10000);
-	// TODO: how much of this is "once only"?
 	unsigned char setup[3] = {
 		0x80, IOINIT, IODIR
 	};
-	unsigned char loopback[1] = {	
+	unsigned char loopback[1] = {
 		0x85	// loopback off
 	};
-	unsigned char clock[3] = {	
+	unsigned char clock[3] = {
 		0x86, 0x04, 0x00  // TCK divisor: CLK = 6 MHz / (1 + 0004) == 1.2 MHz
 	};
-	unsigned char xfer[3] = {	
-		0x31, 0x00, 0x00  // Write + read; length bytes set later.
-	};
-
+	ftStatus = FT_SetBitMode(ftHandle, IODIR, FT_BITMODE_MPSSE);
+	if (ftStatus != FT_OK) {
+		return -1;
+	}
 	n = spi_write(ftHandle, setup, sizeof(setup));
 	if (n < 0 || n != sizeof(setup)) {
 		return -1;
@@ -98,9 +134,18 @@ int spi_setup(FT_HANDLE ftHandle, DWORD len) {
 	if (n < 0 || n != sizeof(clock)) {
 		return -1;
 	}
+	return 0;
+}
+
+// Send SPI write prefix - prepare to send data to SPI device
+// (not commands to C232HM).
+static int spi_prep(FT_HANDLE ftHandle, DWORD len) {
+	unsigned char xfer[3] = {
+		0x31, 0x00, 0x00  // Write + read; length bytes set below.
+	};
 	xfer[1] = (unsigned char)(len & 0x00FF);
 	xfer[2] = (unsigned char)((len & 0xFF00) >> 8);
-	n = spi_write(ftHandle, xfer, sizeof(xfer));
+	int n = spi_write(ftHandle, xfer, sizeof(xfer));
 	if (n < 0 || n != sizeof(xfer)) {
 		return -1;
 	}
@@ -134,6 +179,10 @@ static int spi_wait(FT_HANDLE ftHandle, int len) {
 			return -1;
 		}
 	}
+	// This appears to be enough to fix some timing glitch...
+	// Theat caused issues with the 25LC512 nvram, but glitching
+	// more clocks after this point, in FT_Read()?
+	(void)FT_GetQueueStatus(ftHandle, &bytesReceived);
 	return (int)bytesReceived;
 }
 
@@ -146,47 +195,64 @@ static int spi_get(FT_HANDLE ftHandle, unsigned char *buf, int len) {
 	return (int)bytesRead;
 }
 
+// Read as many bytes as are available, at least 'len'
 int spi_read(FT_HANDLE ftHandle, unsigned char *buf, int len) {
+	int m;
 	int n = spi_wait(ftHandle, len);
-	if (n != len) {
+#ifdef DEBUG
+	if (n < 0) {
 		return -1;
 	}
-	n = spi_get(ftHandle, buf, len);
+	(void)spi_cs(ftHandle, 0); // /CS off
 	if (n != len) {
-		return -1;
+		printf("Sent %d, got back %d\n", len, n);
+		if (n > len) {
+			unsigned char *b = malloc(n);
+			if (b == NULL) return -1;
+			m = spi_get(ftHandle, b, n);
+			memcpy(buf, b, len);
+			dump_buf(b, 0xf000, n);
+			free(b);
+		} else {
+			m = spi_get(ftHandle, buf, n);
+			dump_buf(buf, 0xf000, n);
+		}
+	} else {
+		m = spi_get(ftHandle, buf, len);
 	}
-	return len;
+#else // !DEBUG
+	(void)spi_cs(ftHandle, 0); // /CS off
+	int l = len;
+	if (n != len) {
+		if (n < len) l = n;
+		m = spi_get(ftHandle, buf, l);
+		(void)FT_Purge(ftHandle, FT_PURGE_RX | FT_PURGE_TX);
+		fprintf(stderr, "Sent %d, got back %d\n", len, n);
+		//return -1;
+	}
+	m = spi_get(ftHandle, buf, len);
+#endif // !DEBUG
+	return m;
 }
 
 // Start a command sequence (/CS activated)
 int spi_begin(FT_HANDLE ftHandle, int len) {
-	ftStatus = FT_SetBitMode(ftHandle, IODIR, FT_BITMODE_MPSSE);
-	if (ftStatus != FT_OK) {
-		return -1;
-	}
-	int n = spi_setup(ftHandle, len); // setup write
+	int n = spi_cs(ftHandle, 1); // /CS on
 	if (n < 0) {
 		return -1;
 	}
+	n = spi_prep(ftHandle, len); // setup write
+	if (n < 0) {
+		return -1;
+	}
+	return 0;
 }
 
 int spi_end(FT_HANDLE ftHandle) {
-#ifndef ONLY_CS
-	(void)FT_SetBitMode(ftHandle, 0x00, FT_BITMODE_RESET);
-#else
-	// not sure if this works...
-	unsigned char setup[3] = {
-		0x80, 0b1000, IODIR	// /CS off
-	};
-	ftStatus = FT_SetBitMode(ftHandle, IODIR, FT_BITMODE_MPSSE);
-	if (ftStatus != FT_OK) {
+	int n = spi_cs(ftHandle, 0); // /CS off
+	if (n < 0) {
 		return -1;
 	}
-	int n = spi_write(ftHandle, setup, sizeof(setup));
-	if (n < 0 || n != sizeof(setup)) {
-		return -1;
-	}
-#endif
 	return 0;
 }
 
@@ -201,22 +267,11 @@ int spi_xfer(FT_HANDLE ftHandle, unsigned char *bufout,
 	if (n < 0 || n != len) {
 		return -1;
 	}
-#ifndef FAST_CS
 	n = spi_read(ftHandle, bufin, len);
 	int m = spi_end(ftHandle);
 	if (m < 0) {
 		return -1;
 	}
-#else
-	n = spi_wait(ftHandle, len);
-	int m = spi_end(ftHandle);
-	if (m < 0) {
-		return -1;
-	}
-	if (n == len) {
-		n = spi_get(ftHandle, bufin, len);
-	}
-#endif
 	return n;
 }
 
@@ -245,6 +300,10 @@ FT_HANDLE spi_open(int port) {
 	}
 	ftStatus = FT_SetTimeouts(ftHandle, 3000, 3000);
 	if (ftStatus != FT_OK) {
+		goto err_out;
+	}
+	int n = spi_setup(ftHandle);
+	if (n < 0) {
 		goto err_out;
 	}
 	return ftHandle;

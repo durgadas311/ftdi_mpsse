@@ -23,14 +23,15 @@ static int nvwrite(FT_HANDLE ft, unsigned char *bufo, unsigned char *bufi, int l
 	if (e < 0) return -1;
 	// 
 	e = spi_xfer(ft, bufo, bufi, len);
-	if (e < 0) return -1;
+	if (e < 0) return -2;
 	do {
 		e = spi_xfer(ft, stat, buf, sizeof(stat));
-		if (e < 0) return -1;
+		if (e < 0) return -3;
 	} while ((buf[1] & 0x01) != 0);
 	if ((buf[1] & 0x02) != 0) {
 		(void)spi_xfer(ft, wrdi, buf, sizeof(wrdi));
-		return -1;
+		ftStatus = -1;
+		return -4;
 	}
 	return 0;
 }
