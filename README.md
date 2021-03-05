@@ -16,6 +16,8 @@ http://www.ftdichip.com/Support/Documents/DataSheets/Cables/DS_C232HM_MPSSE_CABL
 Note, Application Note 108 (AN-108), referenced in the datasheet, has a wealth
 of information on the MPSSE commands to setup the interface to the target device.
 
+For information on [the spilib API](spi/SPILIB.md).
+
 An alternative, and in some ways superior, device is described at https://spidriver.com/.
 That device bit-bangs the SPI and is fixed at about a 500KHz bit rate, but
 has a nice "logic analyzer" display built-in.
