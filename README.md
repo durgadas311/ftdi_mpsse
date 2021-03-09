@@ -18,10 +18,20 @@ of information on the MPSSE commands to setup the interface to the target device
 
 For information on [the spilib API](spi/SPILIB.md).
 
+### SPI Devices Tested
+
+[SEEPROM 25LC512](25LC512.md)
+
+[WizNet W5500 Modules](W5500.md)
+
+### Alternatives
+
 An alternative, and in some ways superior, device is described at https://spidriver.com/.
 That device bit-bangs the SPI and is fixed at about a 500KHz bit rate, but
 has a nice "logic analyzer" display built-in.
 It is also limited to 64-byte bursts of data.
+
+### Caveats
 
 The MPSSE device requires root privileges and is also incompatible
 with the usbserial driver (which must be removed). It should be possible to
