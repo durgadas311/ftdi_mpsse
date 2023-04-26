@@ -96,6 +96,10 @@ int main(int argc, char **argv) {
 	} else {
 		len = strtol(argv[x++], NULL, 0);
 	}
+	if (len > 61) {
+		fprintf(stderr, "Hardware limited to <= 61 byte transfers\n");
+		exit(1);
+	}
 	tot = len + 3;
 	bufo = malloc(tot);
 	bufi = malloc(tot);
