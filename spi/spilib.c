@@ -49,6 +49,29 @@ static unsigned char setclk[] = {
 	MP_CLKDIV, 0x04, 0x00  // TCK divisor: CLK = 6 MHz / (1 + 0004) == 1.2 MHz
 };
 
+void dump_buf2(unsigned char *buf, int bsb, int off, int len) {
+	int j, k;
+
+	for (j = 0; j < len; j += 16) {
+		// TODO: allow custom line prefix
+		printf("%02x %04x:", bsb, j + off);
+		for (k = 0; k < 16 && k + j < len; ++k) {
+			printf(" %02x", buf[j + k]);
+		}
+		while (k < 16) {
+			printf("   ");
+			++k;
+		}
+		printf("  ");
+		for (k = 0; k < 16 && k + j < len; ++k) {
+			int c = buf[j + k];
+			if (c < ' ' || c > '~') c = '.';
+			printf("%c", c);
+		}
+		printf("\n");
+	}
+}
+
 void dump_buf(unsigned char *buf, int off, int len) {
 	int j, k;
 

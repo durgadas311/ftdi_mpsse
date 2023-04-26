@@ -4,6 +4,7 @@
 #include "ftd2xx.h"
 
 void dump_buf(unsigned char *buf, int off, int len);
+void dump_buf2(unsigned char *buf, int bsb, int off, int len);
 int parse_speed(char *arg);
 char *print_speed(int clk);
 int spi_speed(int hz); // before spi_open()
