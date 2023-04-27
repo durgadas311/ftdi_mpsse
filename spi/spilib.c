@@ -409,8 +409,51 @@ int spi_end(FT_HANDLE ftHandle) {
 }
 
 // Returns bytes read, or -1 on error.
+// handles > 64 bytes.
+int spi_xfer_long(FT_HANDLE ftHandle, unsigned char *bufout,
+			unsigned char *bufin, const int len) {
+	int l = len;
+	int n = spi_cs(ftHandle, 1); // /CS on
+	if (n < 0) {
+		return -1;
+	}
+	while (l > 0) {
+		int k = l;
+		if (k > 64) k = 64;
+		n = spi_prep(ftHandle, k); // setup write
+		if (n < 0) {
+			break;
+		}
+		n = spi_write(ftHandle, bufout, k);
+		if (n < 0 || n != k) {
+			break;
+		}
+		n = spi_wait(ftHandle, k);
+		if (n == k) {
+			n = spi_get(ftHandle, bufin, k);
+		} else {
+			n = -1; // TODO: more grace
+		}
+		if (n < 0) { // || n != k) {
+			break;
+		}
+		l -= k;
+		bufout += k;
+		bufin += k;
+	}
+	int m = spi_end(ftHandle);
+	if (m < 0 || n < 0) {
+		return -1;
+	}
+	return len - l;
+}
+
+// Returns bytes read, or -1 on error.
 int spi_xfer(FT_HANDLE ftHandle, unsigned char *bufout,
 			unsigned char *bufin, const int len) {
+	if (len > 64) {
+		return -1;
+	}
 	int n = spi_begin(ftHandle, len); // setup write
 	if (n < 0) {
 		return -1;

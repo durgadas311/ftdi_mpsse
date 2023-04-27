@@ -21,9 +21,12 @@ int spi_read(FT_HANDLE ftHandle, unsigned char *buf, int len);
 int spi_begin(FT_HANDLE ftHandle, int len);
 int spi_end(FT_HANDLE ftHandle);
 
-// Returns bytes read, or -1 on error.
+// Returns bytes read, or -1 on error. len <= 64
 int spi_xfer(FT_HANDLE ftHandle, unsigned char *bufout,
 			unsigned char *bufin, const int len);
+int spi_xfer_long(FT_HANDLE ftHandle, unsigned char *bufout,
+			unsigned char *bufin, const int len);
+
 FT_HANDLE spi_open(int port);
 void spi_close(FT_HANDLE ftHandle);
 

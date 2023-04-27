@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
 	extern char *optarg;
 	extern int optind;
 
-	while ((c = getopt(argc, argv, "g:p:s:vw")) != EOF) {
+	while ((c = getopt(argc, argv, "g:p:s:vwW")) != EOF) {
 		switch(c) {
 		case 'g':
 			cs = set_cs(optarg[0]);
@@ -57,13 +57,18 @@ int main(int argc, char **argv) {
 		case 'w':
 			wr = 1;
 			break;
+		case 'W':
+			wr = 2;
+			break;
 		default:
 			fprintf(stderr, "Unknown option '%c'\n", c);
 			exit(1);
 		}
 	}
 	e = 0; // command parse error?
-	if (wr) {
+	if (wr == 2) {
+		e = (argc - optind != 3);
+	} else if (wr) {
 		e = (argc - optind < 3);
 	} else {
 		e = (argc - optind != 3);
@@ -71,6 +76,7 @@ int main(int argc, char **argv) {
 	if (e) {
 		fprintf(stderr, "Usage: %s [options] <bsb> <off> <len>\n", argv[0]);
 		fprintf(stderr, "       %s [options] -w <bsb> <off> <byte>[...]\n", argv[0]);
+		fprintf(stderr, "       %s [options] -W <bsb> <off> <string>\n", argv[0]);
 		fprintf(stderr, "Options:\n"
 				"    -p port  Use port instead of 0\n"
 				"    -s hz   Use hz clock speed (def 1.2M)\n"
@@ -91,15 +97,19 @@ int main(int argc, char **argv) {
 	bsb = strtol(argv[x++], NULL, 0);
 	off = strtol(argv[x++], NULL, 0);
 	// READ and WRITE commands are always 3 bytes.
-	if (wr) {
+	if (wr == 2) {
+		len = strlen(argv[x]);
+	} else if (wr) {
 		len = argc - x;
 	} else {
 		len = strtol(argv[x++], NULL, 0);
 	}
+#if 0
 	if (len > 61) {
 		fprintf(stderr, "Hardware limited to <= 61 byte transfers\n");
 		exit(1);
 	}
+#endif
 	tot = len + 3;
 	bufo = malloc(tot);
 	bufi = malloc(tot);
@@ -110,7 +120,10 @@ int main(int argc, char **argv) {
 	bufo[0] = (off >> 8) & 0xff; // big-endian address
 	bufo[1] = off & 0xff;
 	bufo[2] = (bsb << 3); // READ
-	if (wr) {
+	if (wr == 2) {
+		bufo[2] |= 0x04; // WRITE
+		memcpy(bufo + 3, argv[x], len);
+	} else if (wr) {
 		bufo[2] |= 0x04; // WRITE
 		int y = 3;
 		while (x < argc) {
@@ -127,9 +140,9 @@ int main(int argc, char **argv) {
 		exit(1);
 	}
 	if (wr) {
-		e = spi_xfer(ft, bufo, bufi, tot);
+		e = spi_xfer_long(ft, bufo, bufi, tot);
 	} else {
-		e = spi_xfer(ft, bufo, bufi, tot);
+		e = spi_xfer_long(ft, bufo, bufi, tot);
 		if (e >= 0) {
 			dump_buf2(bufi + 3, bsb, off, len);
 		}
