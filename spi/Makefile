@@ -10,7 +10,7 @@ FTDLIB = -lftd2xx
 
 all: spidbg nvram wizdbg
 
-%.o: %.c
+%.o: %.c spilib.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 toggle: toggle.c

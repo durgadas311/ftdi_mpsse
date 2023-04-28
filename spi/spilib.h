@@ -14,13 +14,6 @@ int set_cs(char cs);	// select CS gpio bit, '0'..'3','C'
 extern FT_STATUS ftStatus;
 extern DWORD driverVersion;
 
-// Normally, only open, close, and xfer are used, but provide access anyway...
-int spi_write(FT_HANDLE ftHandle, unsigned char *buf, const int len);
-int spi_setup(FT_HANDLE ftHandle, DWORD len);
-int spi_read(FT_HANDLE ftHandle, unsigned char *buf, int len);
-int spi_begin(FT_HANDLE ftHandle, int len);
-int spi_end(FT_HANDLE ftHandle);
-
 // Returns bytes read, or -1 on error. len <= 64
 int spi_xfer(FT_HANDLE ftHandle, unsigned char *bufout,
 			unsigned char *bufin, const int len);
@@ -29,5 +22,13 @@ int spi_xfer_long(FT_HANDLE ftHandle, unsigned char *bufout,
 
 FT_HANDLE spi_open(int port);
 void spi_close(FT_HANDLE ftHandle);
+
+// Normally, only open, close, and xfer are used. but provide access anyway...
+int spi_write(FT_HANDLE ftHandle, unsigned char *buf, const int len);
+int spi_setup(FT_HANDLE ftHandle, DWORD len);
+int spi_read(FT_HANDLE ftHandle, unsigned char *buf, int len);
+int spi_begin(FT_HANDLE ftHandle, int len);
+int spi_end(FT_HANDLE ftHandle);
+int spi_cs(FT_HANDLE ftHandle, int on);
 
 #endif /* __SPILIB_H__ */

@@ -24,12 +24,24 @@
 			unsigned char *bufin, const int len)`**
 -   Send bufout data to SPI device, save received data in bufin.
 -   Performs chip-select as speicfied by last set_cs(), default is TMS.
+-   Limited to 64 bytes total.
+
+**`int spi_xfer_long(FT_HANDLE ftHandle, unsigned char *bufout,
+			unsigned char *bufin, const int len)`**
+-   Send bufout data to SPI device, save received data in bufin.
+-   Performs chip-select as speicfied by last set_cs(), default is TMS.
+-   Handles transfers longer than 64 bytes.
 
 **`int set_cs(char cs)`**
 -   Choose CS gpio bit, '0'..'3','C' for GPIOL0-3,TMS
 
 **`void dump_buf(unsigned char *buf, int off, int len)`**
 -   Convenience routine to dump data.
+-   'off' is added to index when printing addresses.
+
+**`void dump_buf2(unsigned char *buf, int bsb, int off, int len)`**
+-   Convenience routine to dump data with two-part addresses.
+-   'bsb' is prefixed to each line.
 -   'off' is added to index when printing addresses.
 
 **`int parse_speed(char *arg)`**
@@ -65,3 +77,6 @@
 **`int spi_end(FT_HANDLE ftHandle)`**
 -   Finishes SPI transfer.
 -   Deactivates chip select.
+
+**`int spi_cs(FT_HANDLE ftHandle, int on)`**
+-   Sets currently chosen chip select to on (1) or off (0).
